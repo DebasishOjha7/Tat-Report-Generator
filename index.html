@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.5, user-scalable=yes">
-    <title>Logistics Dashboard · High Clarity PDF (~1MB)</title>
+    <title>Logistics Dashboard · Perfect PDF Pie Charts</title>
     <!-- Chart.js & datalabels + html2canvas & jspdf -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
@@ -129,8 +129,8 @@
             padding: 14px 8px !important;
         }
         .pdf-clone canvas { 
-            width: 500px !important; 
-            height: 300px !important; 
+            width: 550px !important; 
+            height: 350px !important; 
             max-height: none !important; 
         }
         .pdf-clone .btn-group, .pdf-clone .chart-select, .pdf-clone .btn { display: none !important; }
@@ -139,8 +139,8 @@
 <body>
     <div class="dashboard-wrapper">
         <div class="top-bar">
-            <button class="clear-btn" id="clearDataBtn"><span>🗑️</span> Clear Saved Data</button>
-            <button class="pdf-btn" id="exportPdfBtn"><span>📥</span> Download PDF</button>
+            <button class="clear-btn" id="clearDataBtn">🗑️ Clear Saved Data</button>
+            <button class="pdf-btn" id="exportPdfBtn">📥 Download PDF</button>
         </div>
         <div id="dashboardScreen">
             <!-- Trip Row -->
@@ -188,12 +188,11 @@
                     <div class="table-wrapper">
                         <table id="tatTable">
                             <thead>
-                                
-                                    <th contenteditable="true">DATE</th>
-                                    <th contenteditable="true">TRANSIT TAT (HH:MM:SS)</th>
-                                    <th contenteditable="true">ANGUL PARKING → ENTRY GATE</th>
-                                    <th contenteditable="true">PLANT ENTRY → EXIT</th>
-                                </tr>
+                                <th contenteditable="true">DATE</th>
+                                <th contenteditable="true">TRANSIT TAT (HH:MM:SS)</th>
+                                <th contenteditable="true">ANGUL PARKING → ENTRY GATE</th>
+                                <th contenteditable="true">PLANT ENTRY → EXIT</th>
+                            </tr>
                             </thead>
                             <tbody id="tatBody"></tbody>
                         </table>
@@ -213,7 +212,6 @@
 <script>
 Chart.register(ChartDataLabels);
 (function() {
-    // --- AUTO-SAVE FUNCTIONS ---
     const STORAGE_KEY = 'logistics_dashboard_data';
     
     function saveToStorage() {
@@ -257,137 +255,85 @@ Chart.register(ChartDataLabels);
             document.querySelector('#tatTable thead th:nth-child(4)')?.innerText || 'PLANT ENTRY → EXIT'
         ];
         
-        const tripFooter = document.getElementById('tripChartFooter')?.innerText || 'trip data aggregated';
-        const tatFooter = document.getElementById('tatChartFooter')?.innerText || 'average turnaround';
-        const tripTitle = document.getElementById('tripChartTitle')?.innerText || 'TRIP SUMMARY CHART';
-        const tatTitle = document.getElementById('tatChartTitle')?.innerText || 'TAT HOURS CHART';
-        
         const data = {
-            tripRows,
-            tatRows,
-            tripHeaders,
-            tatHeaders,
-            tripFooter,
-            tatFooter,
-            tripTitle,
-            tatTitle,
+            tripRows, tatRows, tripHeaders, tatHeaders,
+            tripFooter: document.getElementById('tripChartFooter')?.innerText,
+            tatFooter: document.getElementById('tatChartFooter')?.innerText,
+            tripTitle: document.getElementById('tripChartTitle')?.innerText,
+            tatTitle: document.getElementById('tatChartTitle')?.innerText,
             tripChartType: document.getElementById('tripChartType').value,
             tatChartType: document.getElementById('tatChartType').value
         };
-        
         localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
     }
     
     function loadFromStorage() {
         const saved = localStorage.getItem(STORAGE_KEY);
-        if (!saved) {
-            initializeDefaultData();
-            return;
-        }
-        
+        if (!saved) { initializeDefaultData(); return; }
         try {
             const data = JSON.parse(saved);
-            
             const tripBody = document.getElementById('tripBody');
             tripBody.innerHTML = '';
-            if (data.tripRows && data.tripRows.length > 0) {
+            if (data.tripRows?.length) {
                 data.tripRows.forEach(row => {
                     const tr = document.createElement('tr');
-                    tr.innerHTML = `<td contenteditable="true">${row.date}<td contenteditable="true">${row.dispatch}<td contenteditable="true">${row.reached}<td contenteditable="true">${row.transit}`;
+                    tr.innerHTML = `<td contenteditable="true">${row.date}</td><td contenteditable="true">${row.dispatch}</td><td contenteditable="true">${row.reached}</td><td contenteditable="true">${row.transit}</td>`;
                     tripBody.appendChild(tr);
                 });
-            } else {
-                initializeDefaultData();
-            }
+            } else initializeDefaultData();
             
             const tatBody = document.getElementById('tatBody');
             tatBody.innerHTML = '';
-            if (data.tatRows && data.tatRows.length > 0) {
+            if (data.tatRows?.length) {
                 data.tatRows.forEach(row => {
                     const tr = document.createElement('tr');
-                    tr.innerHTML = `<td contenteditable="true">${row.date}<td contenteditable="true">${row.transitTat}<td contenteditable="true">${row.parking}<td contenteditable="true">${row.plant}`;
+                    tr.innerHTML = `<td contenteditable="true">${row.date}</td><td contenteditable="true">${row.transitTat}</td><td contenteditable="true">${row.parking}</td><td contenteditable="true">${row.plant}</td>`;
                     tatBody.appendChild(tr);
                 });
-            } else {
-                initializeDefaultData();
-            }
+            } else initializeDefaultData();
             
             if (data.tripHeaders) {
-                const headers = document.querySelectorAll('#tripTable thead th');
-                headers.forEach((th, idx) => {
-                    if (data.tripHeaders[idx]) th.innerText = data.tripHeaders[idx];
-                });
+                document.querySelectorAll('#tripTable thead th').forEach((th, i) => { if(data.tripHeaders[i]) th.innerText = data.tripHeaders[i]; });
             }
-            
             if (data.tatHeaders) {
-                const headers = document.querySelectorAll('#tatTable thead th');
-                headers.forEach((th, idx) => {
-                    if (data.tatHeaders[idx]) th.innerText = data.tatHeaders[idx];
-                });
+                document.querySelectorAll('#tatTable thead th').forEach((th, i) => { if(data.tatHeaders[i]) th.innerText = data.tatHeaders[i]; });
             }
-            
             if (data.tripFooter) document.getElementById('tripChartFooter').innerText = data.tripFooter;
             if (data.tatFooter) document.getElementById('tatChartFooter').innerText = data.tatFooter;
             if (data.tripTitle) document.getElementById('tripChartTitle').innerText = data.tripTitle;
             if (data.tatTitle) document.getElementById('tatChartTitle').innerText = data.tatTitle;
-            
             if (data.tripChartType) document.getElementById('tripChartType').value = data.tripChartType;
             if (data.tatChartType) document.getElementById('tatChartType').value = data.tatChartType;
-            
-        } catch (e) {
-            console.error('Error loading saved data:', e);
-            initializeDefaultData();
-        }
+        } catch(e) { initializeDefaultData(); }
     }
     
     function initializeDefaultData() {
-        const tripBody = document.getElementById('tripBody');
-        tripBody.innerHTML = `
-            <tr><td contenteditable="true">16-01-2026<td contenteditable="true">319<td contenteditable="true">271<td contenteditable="true">48</tr>
-            <tr><td contenteditable="true">17-01-2026<td contenteditable="true">271<td contenteditable="true">34<td contenteditable="true">237</tr>
+        document.getElementById('tripBody').innerHTML = `
+            <tr><td contenteditable="true">16-01-2026</td><td contenteditable="true">319</td><td contenteditable="true">271</td><td contenteditable="true">48</td></tr>
+            <tr><td contenteditable="true">17-01-2026</td><td contenteditable="true">271</td><td contenteditable="true">34</td><td contenteditable="true">237</td></tr>
         `;
-        
-        const tatBody = document.getElementById('tatBody');
-        tatBody.innerHTML = `
-            <tr><td contenteditable="true">16-01-2026<td contenteditable="true">33:04:40<td contenteditable="true">06:24:36<td contenteditable="true">10:56:46</tr>
-            <tr><td contenteditable="true">17-01-2026<td contenteditable="true">29:16:20<td contenteditable="true">05:45:39<td contenteditable="true">12:47:05</tr>
+        document.getElementById('tatBody').innerHTML = `
+            <tr><td contenteditable="true">16-01-2026</td><td contenteditable="true">33:04:40</td><td contenteditable="true">06:24:36</td><td contenteditable="true">10:56:46</td></tr>
+            <tr><td contenteditable="true">17-01-2026</td><td contenteditable="true">29:16:20</td><td contenteditable="true">05:45:39</td><td contenteditable="true">12:47:05</td></tr>
         `;
-        
-        // Reset headers to default
-        const tripHeaders = document.querySelectorAll('#tripTable thead th');
-        if (tripHeaders.length === 4) {
-            tripHeaders[0].innerText = 'DATE';
-            tripHeaders[1].innerText = 'TOTAL DISPATCH';
-            tripHeaders[2].innerText = 'REACHED AT PLANT';
-            tripHeaders[3].innerText = 'TRANSIT';
-        }
-        
-        const tatHeaders = document.querySelectorAll('#tatTable thead th');
-        if (tatHeaders.length === 4) {
-            tatHeaders[0].innerText = 'DATE';
-            tatHeaders[1].innerText = 'TRANSIT TAT (HH:MM:SS)';
-            tatHeaders[2].innerText = 'ANGUL PARKING → ENTRY GATE';
-            tatHeaders[3].innerText = 'PLANT ENTRY → EXIT';
-        }
-        
-        // Reset footers and titles
+        const th1 = document.querySelectorAll('#tripTable thead th');
+        if(th1.length) { th1[0].innerText='DATE'; th1[1].innerText='TOTAL DISPATCH'; th1[2].innerText='REACHED AT PLANT'; th1[3].innerText='TRANSIT'; }
+        const th2 = document.querySelectorAll('#tatTable thead th');
+        if(th2.length) { th2[0].innerText='DATE'; th2[1].innerText='TRANSIT TAT (HH:MM:SS)'; th2[2].innerText='ANGUL PARKING → ENTRY GATE'; th2[3].innerText='PLANT ENTRY → EXIT'; }
         document.getElementById('tripChartFooter').innerText = 'trip data aggregated';
         document.getElementById('tatChartFooter').innerText = 'average turnaround';
         document.getElementById('tripChartTitle').innerText = 'TRIP SUMMARY CHART';
         document.getElementById('tatChartTitle').innerText = 'TAT HOURS CHART';
-        
-        // Reset chart types
         document.getElementById('tripChartType').value = 'bar';
         document.getElementById('tatChartType').value = 'bar';
     }
     
-    // Clear all saved data function
     function clearSavedData() {
-        if (confirm('Are you sure you want to clear all saved data? This will reset the dashboard to default values and cannot be undone.')) {
+        if(confirm('Clear all saved data? This will reset to default.')) {
             localStorage.removeItem(STORAGE_KEY);
             initializeDefaultData();
             refreshAll();
-            alert('All saved data has been cleared and dashboard reset to default.');
+            alert('Data cleared!');
         }
     }
 
@@ -402,17 +348,15 @@ Chart.register(ChartDataLabels);
     loadFromStorage();
 
     function timeToDecimal(t) {
-        if (!t) return 0;
-        let p = t.split(':').map(v => parseInt(v,10)||0);
-        if (p.length===3) return p[0] + p[1]/60 + p[2]/3600;
-        return 0;
+        if(!t) return 0;
+        let p = t.split(':').map(v=>parseInt(v,10)||0);
+        return p.length===3 ? p[0] + p[1]/60 + p[2]/3600 : 0;
     }
 
     function formatTimeLabel(t) {
-        if (!t) return '';
-        let p = t.split(':').map(v => parseInt(v,10)||0);
-        if (p.length===3) return `${p[0]}h ${p[1]}m`;
-        return t;
+        if(!t) return '';
+        let p = t.split(':').map(v=>parseInt(v,10)||0);
+        return p.length===3 ? `${p[0]}h ${p[1]}m` : t;
     }
 
     function getTripHeaders() {
@@ -431,8 +375,7 @@ Chart.register(ChartDataLabels);
     }
 
     function getTripData() {
-        let rows = tripBody.querySelectorAll('tr');
-        let labels = [], d1=[], d2=[], d3=[];
+        let rows = tripBody.querySelectorAll('tr'), labels=[], d1=[], d2=[], d3=[];
         rows.forEach(r=>{
             let c = r.querySelectorAll('td');
             if(c.length>=4){
@@ -446,9 +389,7 @@ Chart.register(ChartDataLabels);
     }
 
     function getTatData() {
-        let rows = tatBody.querySelectorAll('tr');
-        let labels = [], t1=[], t2=[], t3=[];
-        let t1str=[], t2str=[], t3str=[];
+        let rows = tatBody.querySelectorAll('tr'), labels=[], t1=[], t2=[], t3=[], t1str=[], t2str=[], t3str=[];
         rows.forEach(r=>{
             let c = r.querySelectorAll('td');
             if(c.length>=4){
@@ -476,205 +417,102 @@ Chart.register(ChartDataLabels);
     }
 
     function updateTripChart() {
-        let data = getTripData();
-        let type = document.getElementById('tripChartType').value;
-        let h = getTripHeaders();
+        let data = getTripData(), type = document.getElementById('tripChartType').value, h = getTripHeaders();
         if(tripChart) tripChart.destroy();
         if(type==='bar'){
             tripChart = new Chart(tripCanvas, {
                 type:'bar',
-                data:{
-                    labels: data.labels,
-                    datasets:[
-                        {label:h.col2, data:data.d1, backgroundColor:'#5B9BD5'},
-                        {label:h.col3, data:data.d2, backgroundColor:'#ED7D31'},
-                        {label:h.col4, data:data.d3, backgroundColor:'#A5A5A5'}
-                    ]
-                },
-                options:{
-                    responsive:true,
-                    plugins:{
-                        legend: {
-                            labels: {
-                                font: { weight: 'bold', size: 11 }
-                            }
-                        },
-                        datalabels:{ 
-                            color:'#1e3a5f', 
-                            anchor:'end', 
-                            align:'top', 
-                            font: { weight: 'bold', size: 11 },
-                            formatter:v=>v 
-                        }
-                    }
-                }
+                data:{ labels: data.labels, datasets:[
+                    {label:h.col2, data:data.d1, backgroundColor:'#5B9BD5'},
+                    {label:h.col3, data:data.d2, backgroundColor:'#ED7D31'},
+                    {label:h.col4, data:data.d3, backgroundColor:'#A5A5A5'}
+                ]},
+                options:{ responsive:true, plugins:{ legend:{ labels:{ font:{ weight:'bold', size:12 } } }, datalabels:{ color:'#1e3a5f', anchor:'end', align:'top', font:{ weight:'bold', size:12 }, formatter:v=>v } } }
             });
         } else {
-            let total1 = data.d1.reduce((a,b)=>a+b,0);
-            let total2 = data.d2.reduce((a,b)=>a+b,0);
-            let total3 = data.d3.reduce((a,b)=>a+b,0);
+            let t1=data.d1.reduce((a,b)=>a+b,0), t2=data.d2.reduce((a,b)=>a+b,0), t3=data.d3.reduce((a,b)=>a+b,0);
             tripChart = new Chart(tripCanvas, {
                 type:'pie',
-                data:{
-                    labels:[h.col2, h.col3, h.col4],
-                    datasets:[{ data:[total1,total2,total3], backgroundColor:['#5B9BD5','#ED7D31','#A5A5A5'] }]
-                },
-                options:{ 
-                    plugins:{ 
-                        legend: {
-                            labels: {
-                                font: { weight: 'bold', size: 11 }
-                            }
-                        },
-                        datalabels:{ 
-                            color:'white', 
-                            font: { weight: 'bold', size: 12 },
-                            formatter:v=>v 
-                        } 
-                    } 
-                }
+                data:{ labels:[h.col2, h.col3, h.col4], datasets:[{ data:[t1,t2,t3], backgroundColor:['#5B9BD5','#ED7D31','#A5A5A5'] }] },
+                options:{ plugins:{ legend:{ labels:{ font:{ weight:'bold', size:12 } } }, datalabels:{ color:'white', font:{ weight:'bold', size:14 }, backgroundColor:'rgba(0,0,0,0.65)', borderRadius:24, padding:{ top:6, bottom:6, left:12, right:12 }, formatter:v=>v } } }
             });
         }
     }
 
     function updateTatChart() {
-        let data = getTatData();
-        let type = document.getElementById('tatChartType').value;
-        let h = getTatHeaders();
+        let data = getTatData(), type = document.getElementById('tatChartType').value, h = getTatHeaders();
         if(tatChart) tatChart.destroy();
         if(type==='bar'){
             tatChart = new Chart(tatCanvas, {
                 type:'bar',
-                data:{
-                    labels: data.labels,
-                    datasets:[
-                        {label:h.col2, data:data.t1, backgroundColor:'#5B9BD5'},
-                        {label:h.col3, data:data.t2, backgroundColor:'#ED7D31'},
-                        {label:h.col4, data:data.t3, backgroundColor:'#A5A5A5'}
-                    ]
-                },
-                options:{
-                    responsive:true,
-                    plugins:{
-                        legend: {
-                            labels: {
-                                font: { weight: 'bold', size: 10 }
-                            }
-                        },
-                        datalabels:{
-                            color:'#1e3a5f', 
-                            anchor:'end', 
-                            align:'top',
-                            font: { weight: 'bold', size: 10 },
-                            formatter:(value, context) => {
-                                let idx = context.dataIndex;
-                                let ds = context.datasetIndex;
-                                if(ds === 0) return data.t1str[idx] ? formatTimeLabel(data.t1str[idx]) : value.toFixed(2)+'h';
-                                if(ds === 1) return data.t2str[idx] ? formatTimeLabel(data.t2str[idx]) : value.toFixed(2)+'h';
-                                if(ds === 2) return data.t3str[idx] ? formatTimeLabel(data.t3str[idx]) : value.toFixed(2)+'h';
-                                return value.toFixed(2)+'h';
-                            }
-                        }
-                    }
-                }
+                data:{ labels: data.labels, datasets:[
+                    {label:h.col2, data:data.t1, backgroundColor:'#5B9BD5'},
+                    {label:h.col3, data:data.t2, backgroundColor:'#ED7D31'},
+                    {label:h.col4, data:data.t3, backgroundColor:'#A5A5A5'}
+                ]},
+                options:{ responsive:true, plugins:{ legend:{ labels:{ font:{ weight:'bold', size:11 } } }, datalabels:{ color:'#1e3a5f', anchor:'end', align:'top', font:{ weight:'bold', size:11 }, formatter:(v,ctx)=>{
+                    let idx=ctx.dataIndex, ds=ctx.datasetIndex;
+                    if(ds===0) return data.t1str[idx] ? formatTimeLabel(data.t1str[idx]) : v.toFixed(2)+'h';
+                    if(ds===1) return data.t2str[idx] ? formatTimeLabel(data.t2str[idx]) : v.toFixed(2)+'h';
+                    return data.t3str[idx] ? formatTimeLabel(data.t3str[idx]) : v.toFixed(2)+'h';
+                } } } }
             });
         } else {
             let avg1 = data.t1.reduce((a,b)=>a+b,0)/data.t1.length;
             let avg2 = data.t2.reduce((a,b)=>a+b,0)/data.t2.length;
             let avg3 = data.t3.reduce((a,b)=>a+b,0)/data.t3.length;
-            
             tatChart = new Chart(tatCanvas, {
                 type:'pie',
-                data:{
-                    labels:[h.col2, h.col3, h.col4],
-                    datasets:[{ data:[avg1,avg2,avg3], backgroundColor:['#5B9BD5','#ED7D31','#A5A5A5'] }]
-                },
-                options:{ 
-                    plugins:{ 
-                        legend: {
-                            labels: {
-                                font: { weight: 'bold', size: 11 }
-                            }
-                        },
-                        datalabels:{ 
-                            color:'white', 
-                            font: { weight: 'bold', size: 11 },
-                            formatter:(v) => {
-                                const hours = Math.floor(v);
-                                const minutes = Math.round((v - hours) * 60);
-                                return `${hours}h ${minutes}m`;
-                            }
-                        } 
-                    } 
-                }
+                data:{ labels:[h.col2, h.col3, h.col4], datasets:[{ data:[avg1,avg2,avg3], backgroundColor:['#5B9BD5','#ED7D31','#A5A5A5'] }] },
+                options:{ plugins:{ legend:{ labels:{ font:{ weight:'bold', size:12 } } }, datalabels:{ color:'white', font:{ weight:'bold', size:14 }, backgroundColor:'rgba(0,0,0,0.65)', borderRadius:24, padding:{ top:6, bottom:6, left:12, right:12 }, formatter:(v)=>{
+                    const hours = Math.floor(v);
+                    const minutes = Math.round((v - hours) * 60);
+                    return `${hours}h ${minutes}m`;
+                } } } }
             });
         }
     }
 
-    function refreshAll() { 
-        updateTransit(); 
-        updateTripChart(); 
-        updateTatChart(); 
-        saveToStorage();
-    }
+    function refreshAll() { updateTransit(); updateTripChart(); updateTatChart(); saveToStorage(); }
 
-    document.getElementById('addTripRowBtn').addEventListener('click', ()=>{
+    document.getElementById('addTripRowBtn').onclick = () => {
         let row = document.createElement('tr');
-        row.innerHTML = '<td contenteditable="true">New Date<td contenteditable="true">0<td contenteditable="true">0<td contenteditable="true">0';
-        tripBody.appendChild(row); 
-        refreshAll();
-    });
-    
-    document.getElementById('deleteTripRowBtn').addEventListener('click', ()=>{
-        if(tripBody.children.length>1) tripBody.removeChild(tripBody.lastElementChild); 
-        refreshAll();
-    });
-    
-    document.getElementById('addTatRowBtn').addEventListener('click', ()=>{
+        row.innerHTML = '<td contenteditable="true">New Date</td><td contenteditable="true">0</td><td contenteditable="true">0</td><td contenteditable="true">0</td>';
+        tripBody.appendChild(row); refreshAll();
+    };
+    document.getElementById('deleteTripRowBtn').onclick = () => { if(tripBody.children.length>1) tripBody.removeChild(tripBody.lastElementChild); refreshAll(); };
+    document.getElementById('addTatRowBtn').onclick = () => {
         let row = document.createElement('tr');
-        row.innerHTML = '<td contenteditable="true">New Date<td contenteditable="true">00:00:00<td contenteditable="true">00:00:00<td contenteditable="true">00:00:00';
-        tatBody.appendChild(row); 
-        refreshAll();
-    });
-    
-    document.getElementById('deleteTatRowBtn').addEventListener('click', ()=>{
-        if(tatBody.children.length>1) tatBody.removeChild(tatBody.lastElementChild); 
-        refreshAll();
-    });
+        row.innerHTML = '<td contenteditable="true">New Date</td><td contenteditable="true">00:00:00</td><td contenteditable="true">00:00:00</td><td contenteditable="true">00:00:00</td>';
+        tatBody.appendChild(row); refreshAll();
+    };
+    document.getElementById('deleteTatRowBtn').onclick = () => { if(tatBody.children.length>1) tatBody.removeChild(tatBody.lastElementChild); refreshAll(); };
 
     tripBody.addEventListener('input', (e) => {
-        const cell = e.target;
-        if (cell.tagName === 'TD') {
-            const row = cell.parentNode;
-            const cells = row.querySelectorAll('td');
-            if (cells.length >= 4) {
-                const index = Array.from(cells).indexOf(cell);
-                if (index === 1 || index === 2) {
-                    const d = parseFloat(cells[1].innerText.trim()) || 0;
-                    const r = parseFloat(cells[2].innerText.trim()) || 0;
+        let cell = e.target;
+        if(cell.tagName === 'TD'){
+            let row = cell.parentNode, cells = row.querySelectorAll('td');
+            if(cells.length>=4){
+                let idx = Array.from(cells).indexOf(cell);
+                if(idx === 1 || idx === 2){
+                    let d = parseFloat(cells[1].innerText.trim())||0;
+                    let r = parseFloat(cells[2].innerText.trim())||0;
                     cells[3].innerText = d - r;
                 }
             }
         }
         refreshAll();
     });
-    
     tatBody.addEventListener('input', refreshAll);
-    
-    document.querySelectorAll('th[contenteditable], .chart-footer, .chart-header h3').forEach(el=>{
-        el.addEventListener('input', refreshAll);
-    });
-    
+    document.querySelectorAll('th[contenteditable], .chart-footer, .chart-header h3').forEach(el=>el.addEventListener('input', refreshAll));
     document.getElementById('tripChartType').addEventListener('change', refreshAll);
     document.getElementById('tatChartType').addEventListener('change', refreshAll);
-    
-    // Clear button event listener
     clearBtn.addEventListener('click', clearSavedData);
 
-    // ===== HIGH CLARITY PDF EXPORT =====
+    // PDF EXPORT - FIXED for pie charts
     exportBtn.addEventListener('click', async function() {
         try {
-            exportBtn.textContent = 'Generating High-Quality PDF...'; 
+            exportBtn.textContent = 'Generating PDF...';
             exportBtn.disabled = true;
             clearBtn.disabled = true;
             
@@ -683,7 +521,7 @@ Chart.register(ChartDataLabels);
             clone.querySelectorAll('.btn-group, .chart-select, .btn').forEach(el=>el.remove());
             clone.classList.add('pdf-clone');
             document.body.appendChild(clone);
-
+            
             const cloneTrip = clone.querySelector('#tripChartCanvas');
             const cloneTat = clone.querySelector('#tatChartCanvas');
             const tripType = document.getElementById('tripChartType').value;
@@ -692,13 +530,17 @@ Chart.register(ChartDataLabels);
             const tatHeaders = getTatHeaders();
             const tripData = getTripData();
             const tatData = getTatData();
-
+            
+            // Helper to create chart with proper datalabels
             const createFixed = (canvas, type, isTrip) => {
                 if(!canvas) return;
-                canvas.width = 550; canvas.height = 330;
-                canvas.style.width = '550px'; canvas.style.height = '330px';
+                canvas.width = 550;
+                canvas.height = 350;
+                canvas.style.width = '550px';
+                canvas.style.height = '350px';
+                
                 if(isTrip){
-                    if(type==='bar'){
+                    if(type === 'bar'){
                         new Chart(canvas, {
                             type:'bar',
                             data:{
@@ -709,32 +551,18 @@ Chart.register(ChartDataLabels);
                                     {label:tripHeaders.col4, data:tripData.d3, backgroundColor:'#A5A5A5'}
                                 ]
                             },
-                            options:{ 
-                                responsive:false, 
-                                maintainAspectRatio:false, 
-                                animation:false,
-                                plugins: {
-                                    legend: { labels: { font: { weight: 'bold' } } }
-                                }
-                            }
+                            options:{ responsive:false, maintainAspectRatio:false, animation:false, plugins:{ datalabels:{ color:'#1e3a5f', anchor:'end', align:'top', font:{ weight:'bold', size:11 }, formatter:v=>v } } }
                         });
                     } else {
                         let t1=tripData.d1.reduce((a,b)=>a+b,0), t2=tripData.d2.reduce((a,b)=>a+b,0), t3=tripData.d3.reduce((a,b)=>a+b,0);
                         new Chart(canvas, {
                             type:'pie',
                             data:{ labels:[tripHeaders.col2, tripHeaders.col3, tripHeaders.col4], datasets:[{ data:[t1,t2,t3], backgroundColor:['#5B9BD5','#ED7D31','#A5A5A5'] }] },
-                            options:{ 
-                                responsive:false, 
-                                maintainAspectRatio:false, 
-                                animation:false,
-                                plugins: {
-                                    legend: { labels: { font: { weight: 'bold' } } }
-                                }
-                            }
+                            options:{ responsive:false, maintainAspectRatio:false, animation:false, plugins:{ datalabels:{ color:'white', font:{ weight:'bold', size:14 }, backgroundColor:'rgba(0,0,0,0.65)', borderRadius:24, padding:{ top:6, bottom:6, left:12, right:12 }, formatter:v=>v } } }
                         });
                     }
                 } else {
-                    if(type==='bar'){
+                    if(type === 'bar'){
                         new Chart(canvas, {
                             type:'bar',
                             data:{
@@ -745,22 +573,12 @@ Chart.register(ChartDataLabels);
                                     {label:tatHeaders.col4, data:tatData.t3, backgroundColor:'#A5A5A5'}
                                 ]
                             },
-                            options:{
-                                responsive:false, maintainAspectRatio:false, animation:false,
-                                plugins:{ 
-                                    legend: { labels: { font: { weight: 'bold' } } },
-                                    datalabels:{ 
-                                        font: { weight: 'bold' },
-                                        formatter:(v,ctx)=>{
-                                            let idx=ctx.dataIndex, ds=ctx.datasetIndex;
-                                            if(ds===0) return tatData.t1str[idx] ? formatTimeLabel(tatData.t1str[idx]) : v.toFixed(2)+'h';
-                                            if(ds===1) return tatData.t2str[idx] ? formatTimeLabel(tatData.t2str[idx]) : v.toFixed(2)+'h';
-                                            if(ds===2) return tatData.t3str[idx] ? formatTimeLabel(tatData.t3str[idx]) : v.toFixed(2)+'h';
-                                            return v.toFixed(2)+'h';
-                                        } 
-                                    } 
-                                }
-                            }
+                            options:{ responsive:false, maintainAspectRatio:false, animation:false, plugins:{ datalabels:{ color:'#1e3a5f', anchor:'end', align:'top', font:{ weight:'bold', size:10 }, formatter:(v,ctx)=>{
+                                let idx=ctx.dataIndex, ds=ctx.datasetIndex;
+                                if(ds===0) return tatData.t1str[idx] ? formatTimeLabel(tatData.t1str[idx]) : v.toFixed(2)+'h';
+                                if(ds===1) return tatData.t2str[idx] ? formatTimeLabel(tatData.t2str[idx]) : v.toFixed(2)+'h';
+                                return tatData.t3str[idx] ? formatTimeLabel(tatData.t3str[idx]) : v.toFixed(2)+'h';
+                            } } } }
                         });
                     } else {
                         let a1 = tatData.t1.reduce((a,b)=>a+b,0)/tatData.t1.length;
@@ -769,49 +587,29 @@ Chart.register(ChartDataLabels);
                         new Chart(canvas, {
                             type:'pie',
                             data:{ labels:[tatHeaders.col2, tatHeaders.col3, tatHeaders.col4], datasets:[{ data:[a1,a2,a3], backgroundColor:['#5B9BD5','#ED7D31','#A5A5A5'] }] },
-                            options:{ 
-                                responsive:false, 
-                                maintainAspectRatio:false, 
-                                animation:false, 
-                                plugins:{ 
-                                    legend: { labels: { font: { weight: 'bold' } } },
-                                    datalabels:{ 
-                                        font: { weight: 'bold' },
-                                        formatter:(v) => {
-                                            const hours = Math.floor(v);
-                                            const minutes = Math.round((v - hours) * 60);
-                                            return `${hours}h ${minutes}m`;
-                                        }
-                                    } 
-                                } 
-                            }
+                            options:{ responsive:false, maintainAspectRatio:false, animation:false, plugins:{ datalabels:{ color:'white', font:{ weight:'bold', size:14 }, backgroundColor:'rgba(0,0,0,0.65)', borderRadius:24, padding:{ top:6, bottom:6, left:12, right:12 }, formatter:(v)=>{
+                                const hours = Math.floor(v);
+                                const minutes = Math.round((v - hours) * 60);
+                                return `${hours}h ${minutes}m`;
+                            } } } }
                         });
                     }
                 }
             };
-
+            
             createFixed(cloneTrip, tripType, true);
             createFixed(cloneTat, tatType, false);
             
-            await new Promise(r=>setTimeout(r,1500));
-
-            const canvas = await html2canvas(clone, { 
-                scale: 3.0,
-                backgroundColor: '#ffffff', 
-                useCORS: true, 
-                windowWidth: 1200,
-                logging: false
-            });
+            await new Promise(r => setTimeout(r, 1500));
             
+            const canvas = await html2canvas(clone, { scale: 2.5, backgroundColor: '#ffffff', useCORS: true, windowWidth: 1200, logging: false });
             const { jsPDF } = window.jspdf;
             const pdf = new jsPDF({ orientation:'landscape', unit:'mm', format:'a4' });
-            const imgData = canvas.toDataURL('image/jpeg', 0.95);
+            const imgData = canvas.toDataURL('image/jpeg', 0.92);
             const pw = pdf.internal.pageSize.getWidth();
             const ph = pdf.internal.pageSize.getHeight();
-            const iw = canvas.width;
-            const ih = canvas.height;
+            const iw = canvas.width, ih = canvas.height;
             const ratio = Math.min(pw/iw, ph/ih);
-            
             pdf.addImage(imgData, 'JPEG', (pw-iw*ratio)/2, (ph-ih*ratio)/2, iw*ratio, ih*ratio);
             pdf.save('Tat_Report.pdf');
             
@@ -819,9 +617,8 @@ Chart.register(ChartDataLabels);
             exportBtn.textContent = '📥 Download PDF';
             exportBtn.disabled = false;
             clearBtn.disabled = false;
-            
         } catch(e) {
-            console.error(e); 
+            console.error(e);
             alert('PDF generation failed. Please try again.');
             document.querySelector('.pdf-clone')?.remove();
             exportBtn.textContent = '📥 Download PDF';
