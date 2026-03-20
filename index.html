@@ -1,0 +1,837 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.5, user-scalable=yes">
+    <title>Logistics Dashboard · High Clarity PDF (~1MB)</title>
+    <!-- Chart.js & datalabels + html2canvas & jspdf -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
+            background: #f0f4f8;
+            padding: 24px 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .dashboard-wrapper { max-width: 1400px; width: 100%; }
+        .top-bar { 
+            display: flex; 
+            justify-content: flex-end; 
+            margin-bottom: 24px; 
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+        .pdf-btn {
+            background: #1e3f5f; color: white; border: none; padding: 12px 28px;
+            border-radius: 40px; font-size: 1rem; font-weight: 500; cursor: pointer;
+            display: flex; align-items: center; gap: 8px;
+            box-shadow: 0 4px 12px rgba(30,63,95,0.25); transition: all 0.2s ease;
+        }
+        .pdf-btn:hover { background: #16344d; transform: translateY(-2px); }
+        .pdf-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+        
+        .clear-btn {
+            background: #dc2626; color: white; border: none; padding: 12px 28px;
+            border-radius: 40px; font-size: 1rem; font-weight: 500; cursor: pointer;
+            display: flex; align-items: center; gap: 8px;
+            box-shadow: 0 4px 12px rgba(220,38,38,0.25); transition: all 0.2s ease;
+        }
+        .clear-btn:hover { background: #b91c1c; transform: translateY(-2px); }
+        .clear-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+        
+        .dashboard-grid {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 24px;
+        }
+        @media (max-width: 720px) { .dashboard-grid { grid-template-columns: 1fr; } }
+        .card {
+            background: #ffffff; border-radius: 20px; box-shadow: 0 8px 30px rgba(0,20,40,0.06);
+            padding: 24px; border: 1px solid rgba(0,0,0,0.02);
+        }
+        .card-header {
+            display: flex; align-items: center; justify-content: space-between;
+            margin-bottom: 20px; flex-wrap: wrap; gap: 16px;
+        }
+        .card-header h2 { font-size: 1.4rem; font-weight: 600; color: #1a2b3c; }
+        .btn-group { display: flex; gap: 10px; flex-wrap: wrap; }
+        .btn {
+            background: white; border: 1px solid #dde3e9; padding: 8px 18px;
+            border-radius: 40px; font-size: 0.9rem; font-weight: 500; color: #2c3e50; cursor: pointer;
+        }
+        .chart-select {
+            background: #f0f4f8; border: 1px solid #d0ddee; padding: 8px 22px 8px 18px;
+            border-radius: 40px; font-size: 0.85rem; font-weight: 500; color: #1e3a5f; cursor: pointer;
+        }
+        .table-wrapper { overflow-x: auto; border-radius: 16px; border: 1px solid #edf2f7; background: white; }
+        table { width: 100%; border-collapse: collapse; font-size: 0.9rem; min-width: 500px; }
+        th {
+            background: #f8fbfe; color: #1e3a5f; font-weight: 600; padding: 16px 14px;
+            border-bottom: 2px solid #dde7f0; text-transform: uppercase;
+        }
+        th[contenteditable="true"] { background-color: #fcf8e7; }
+        td { padding: 14px 12px; border-bottom: 1px solid #e9eef3; text-align: center; }
+        td[contenteditable="true"] { background-color: #fefcf5; }
+        .chart-container {
+            background: #ffffff; border-radius: 20px; padding: 20px;
+            display: flex; flex-direction: column; border: 1px solid rgba(0,0,0,0.03); height: 100%;
+        }
+        .chart-header {
+            display: flex; align-items: center; justify-content: space-between;
+            margin-bottom: 20px; flex-wrap: wrap; gap: 12px;
+        }
+        .chart-header h3 { 
+            font-size: 1.1rem; 
+            font-weight: 700;
+            color: #1a2b3c; 
+        }
+        canvas {
+            width: 100% !important; height: auto !important; min-height: 280px; max-height: 320px;
+            background: #ffffff; border-radius: 12px;
+        }
+        .chart-footer {
+            text-align: center; margin-top: 16px; color: #6f7d95; font-size: 0.8rem;
+            background: #f8fbfe; padding: 8px 12px; border-radius: 30px;
+            font-weight: 600;
+        }
+        .footer-note {
+            text-align: center; color: #8a99b0; font-size: 0.8rem;
+            margin-top: 32px; padding-top: 20px; border-top: 1px solid #e0e8f0;
+        }
+        /* PDF clone styling */
+        .pdf-clone {
+            position: absolute !important; left: -9999px !important; top: 0 !important;
+            width: 1200px !important; background: white !important; padding: 30px !important;
+            z-index: 10000 !important; box-shadow: none !important;
+        }
+        .pdf-clone .dashboard-grid {
+            display: flex !important; flex-direction: row !important; flex-wrap: nowrap !important;
+            gap: 30px !important; margin-bottom: 30px !important;
+        }
+        .pdf-clone .card, .pdf-clone .chart-container {
+            flex: 1 !important; min-width: 550px !important; max-width: 550px !important;
+            box-shadow: none !important; border: 1px solid #e0e8f0 !important;
+        }
+        .pdf-clone .table-wrapper {
+            width: 100% !important;
+            overflow: hidden !important;
+        }
+        .pdf-clone table {
+            width: 100% !important;
+            table-layout: fixed !important;
+        }
+        .pdf-clone th, .pdf-clone td {
+            width: 25% !important;
+            padding: 14px 8px !important;
+        }
+        .pdf-clone canvas { 
+            width: 500px !important; 
+            height: 300px !important; 
+            max-height: none !important; 
+        }
+        .pdf-clone .btn-group, .pdf-clone .chart-select, .pdf-clone .btn { display: none !important; }
+    </style>
+</head>
+<body>
+    <div class="dashboard-wrapper">
+        <div class="top-bar">
+            <button class="clear-btn" id="clearDataBtn"><span>🗑️</span> Clear Saved Data</button>
+            <button class="pdf-btn" id="exportPdfBtn"><span>📥</span> Download PDF</button>
+        </div>
+        <div id="dashboardScreen">
+            <!-- Trip Row -->
+            <div class="dashboard-grid">
+                <div class="card">
+                    <div class="card-header">
+                        <h2>🚛 Trip Summary</h2>
+                        <div class="btn-group">
+                            <button class="btn btn-outline" id="addTripRowBtn">➕ Add Row</button>
+                            <button class="btn btn-outline" id="deleteTripRowBtn">➖ Delete</button>
+                        </div>
+                    </div>
+                    <div class="table-wrapper">
+                        <table id="tripTable">
+                            <thead>
+                                <th contenteditable="true">DATE</th>
+                                <th contenteditable="true">TOTAL DISPATCH</th>
+                                <th contenteditable="true">REACHED AT PLANT</th>
+                                <th contenteditable="true">TRANSIT</th>
+                            </tr>
+                            </thead>
+                            <tbody id="tripBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="chart-container">
+                    <div class="chart-header">
+                        <h3 contenteditable="true" id="tripChartTitle">TRIP SUMMARY CHART</h3>
+                        <select class="chart-select" id="tripChartType"><option value="bar">📊 Bar</option><option value="pie">🥧 Pie</option></select>
+                    </div>
+                    <canvas id="tripChartCanvas"></canvas>
+                    <div class="chart-footer" contenteditable="true" id="tripChartFooter">trip data aggregated</div>
+                </div>
+            </div>
+            <!-- TAT Row -->
+            <div class="dashboard-grid">
+                <div class="card">
+                    <div class="card-header">
+                        <h2>⏱️ Turnaround Time (TAT)</h2>
+                        <div class="btn-group">
+                            <button class="btn btn-outline" id="addTatRowBtn">➕ Add Row</button>
+                            <button class="btn btn-outline" id="deleteTatRowBtn">➖ Delete</button>
+                        </div>
+                    </div>
+                    <div class="table-wrapper">
+                        <table id="tatTable">
+                            <thead>
+                                
+                                    <th contenteditable="true">DATE</th>
+                                    <th contenteditable="true">TRANSIT TAT (HH:MM:SS)</th>
+                                    <th contenteditable="true">ANGUL PARKING → ENTRY GATE</th>
+                                    <th contenteditable="true">PLANT ENTRY → EXIT</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tatBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="chart-container">
+                    <div class="chart-header">
+                        <h3 contenteditable="true" id="tatChartTitle">TAT HOURS CHART</h3>
+                        <select class="chart-select" id="tatChartType"><option value="bar">📊 Bar</option><option value="pie">🥧 Pie</option></select>
+                    </div>
+                    <canvas id="tatChartCanvas"></canvas>
+                    <div class="chart-footer" contenteditable="true" id="tatChartFooter">average turnaround</div>
+                </div>
+            </div>
+        </div>
+    </div>
+<script>
+Chart.register(ChartDataLabels);
+(function() {
+    // --- AUTO-SAVE FUNCTIONS ---
+    const STORAGE_KEY = 'logistics_dashboard_data';
+    
+    function saveToStorage() {
+        const tripRows = [];
+        document.querySelectorAll('#tripBody tr').forEach(row => {
+            const cells = row.querySelectorAll('td');
+            if (cells.length === 4) {
+                tripRows.push({
+                    date: cells[0].innerText,
+                    dispatch: cells[1].innerText,
+                    reached: cells[2].innerText,
+                    transit: cells[3].innerText
+                });
+            }
+        });
+        
+        const tatRows = [];
+        document.querySelectorAll('#tatBody tr').forEach(row => {
+            const cells = row.querySelectorAll('td');
+            if (cells.length === 4) {
+                tatRows.push({
+                    date: cells[0].innerText,
+                    transitTat: cells[1].innerText,
+                    parking: cells[2].innerText,
+                    plant: cells[3].innerText
+                });
+            }
+        });
+        
+        const tripHeaders = [
+            document.querySelector('#tripTable thead th:nth-child(1)')?.innerText || 'DATE',
+            document.querySelector('#tripTable thead th:nth-child(2)')?.innerText || 'TOTAL DISPATCH',
+            document.querySelector('#tripTable thead th:nth-child(3)')?.innerText || 'REACHED AT PLANT',
+            document.querySelector('#tripTable thead th:nth-child(4)')?.innerText || 'TRANSIT'
+        ];
+        
+        const tatHeaders = [
+            document.querySelector('#tatTable thead th:nth-child(1)')?.innerText || 'DATE',
+            document.querySelector('#tatTable thead th:nth-child(2)')?.innerText || 'TRANSIT TAT (HH:MM:SS)',
+            document.querySelector('#tatTable thead th:nth-child(3)')?.innerText || 'ANGUL PARKING → ENTRY GATE',
+            document.querySelector('#tatTable thead th:nth-child(4)')?.innerText || 'PLANT ENTRY → EXIT'
+        ];
+        
+        const tripFooter = document.getElementById('tripChartFooter')?.innerText || 'trip data aggregated';
+        const tatFooter = document.getElementById('tatChartFooter')?.innerText || 'average turnaround';
+        const tripTitle = document.getElementById('tripChartTitle')?.innerText || 'TRIP SUMMARY CHART';
+        const tatTitle = document.getElementById('tatChartTitle')?.innerText || 'TAT HOURS CHART';
+        
+        const data = {
+            tripRows,
+            tatRows,
+            tripHeaders,
+            tatHeaders,
+            tripFooter,
+            tatFooter,
+            tripTitle,
+            tatTitle,
+            tripChartType: document.getElementById('tripChartType').value,
+            tatChartType: document.getElementById('tatChartType').value
+        };
+        
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    }
+    
+    function loadFromStorage() {
+        const saved = localStorage.getItem(STORAGE_KEY);
+        if (!saved) {
+            initializeDefaultData();
+            return;
+        }
+        
+        try {
+            const data = JSON.parse(saved);
+            
+            const tripBody = document.getElementById('tripBody');
+            tripBody.innerHTML = '';
+            if (data.tripRows && data.tripRows.length > 0) {
+                data.tripRows.forEach(row => {
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `<td contenteditable="true">${row.date}<td contenteditable="true">${row.dispatch}<td contenteditable="true">${row.reached}<td contenteditable="true">${row.transit}`;
+                    tripBody.appendChild(tr);
+                });
+            } else {
+                initializeDefaultData();
+            }
+            
+            const tatBody = document.getElementById('tatBody');
+            tatBody.innerHTML = '';
+            if (data.tatRows && data.tatRows.length > 0) {
+                data.tatRows.forEach(row => {
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `<td contenteditable="true">${row.date}<td contenteditable="true">${row.transitTat}<td contenteditable="true">${row.parking}<td contenteditable="true">${row.plant}`;
+                    tatBody.appendChild(tr);
+                });
+            } else {
+                initializeDefaultData();
+            }
+            
+            if (data.tripHeaders) {
+                const headers = document.querySelectorAll('#tripTable thead th');
+                headers.forEach((th, idx) => {
+                    if (data.tripHeaders[idx]) th.innerText = data.tripHeaders[idx];
+                });
+            }
+            
+            if (data.tatHeaders) {
+                const headers = document.querySelectorAll('#tatTable thead th');
+                headers.forEach((th, idx) => {
+                    if (data.tatHeaders[idx]) th.innerText = data.tatHeaders[idx];
+                });
+            }
+            
+            if (data.tripFooter) document.getElementById('tripChartFooter').innerText = data.tripFooter;
+            if (data.tatFooter) document.getElementById('tatChartFooter').innerText = data.tatFooter;
+            if (data.tripTitle) document.getElementById('tripChartTitle').innerText = data.tripTitle;
+            if (data.tatTitle) document.getElementById('tatChartTitle').innerText = data.tatTitle;
+            
+            if (data.tripChartType) document.getElementById('tripChartType').value = data.tripChartType;
+            if (data.tatChartType) document.getElementById('tatChartType').value = data.tatChartType;
+            
+        } catch (e) {
+            console.error('Error loading saved data:', e);
+            initializeDefaultData();
+        }
+    }
+    
+    function initializeDefaultData() {
+        const tripBody = document.getElementById('tripBody');
+        tripBody.innerHTML = `
+            <tr><td contenteditable="true">16-01-2026<td contenteditable="true">319<td contenteditable="true">271<td contenteditable="true">48</tr>
+            <tr><td contenteditable="true">17-01-2026<td contenteditable="true">271<td contenteditable="true">34<td contenteditable="true">237</tr>
+        `;
+        
+        const tatBody = document.getElementById('tatBody');
+        tatBody.innerHTML = `
+            <tr><td contenteditable="true">16-01-2026<td contenteditable="true">33:04:40<td contenteditable="true">06:24:36<td contenteditable="true">10:56:46</tr>
+            <tr><td contenteditable="true">17-01-2026<td contenteditable="true">29:16:20<td contenteditable="true">05:45:39<td contenteditable="true">12:47:05</tr>
+        `;
+        
+        // Reset headers to default
+        const tripHeaders = document.querySelectorAll('#tripTable thead th');
+        if (tripHeaders.length === 4) {
+            tripHeaders[0].innerText = 'DATE';
+            tripHeaders[1].innerText = 'TOTAL DISPATCH';
+            tripHeaders[2].innerText = 'REACHED AT PLANT';
+            tripHeaders[3].innerText = 'TRANSIT';
+        }
+        
+        const tatHeaders = document.querySelectorAll('#tatTable thead th');
+        if (tatHeaders.length === 4) {
+            tatHeaders[0].innerText = 'DATE';
+            tatHeaders[1].innerText = 'TRANSIT TAT (HH:MM:SS)';
+            tatHeaders[2].innerText = 'ANGUL PARKING → ENTRY GATE';
+            tatHeaders[3].innerText = 'PLANT ENTRY → EXIT';
+        }
+        
+        // Reset footers and titles
+        document.getElementById('tripChartFooter').innerText = 'trip data aggregated';
+        document.getElementById('tatChartFooter').innerText = 'average turnaround';
+        document.getElementById('tripChartTitle').innerText = 'TRIP SUMMARY CHART';
+        document.getElementById('tatChartTitle').innerText = 'TAT HOURS CHART';
+        
+        // Reset chart types
+        document.getElementById('tripChartType').value = 'bar';
+        document.getElementById('tatChartType').value = 'bar';
+    }
+    
+    // Clear all saved data function
+    function clearSavedData() {
+        if (confirm('Are you sure you want to clear all saved data? This will reset the dashboard to default values and cannot be undone.')) {
+            localStorage.removeItem(STORAGE_KEY);
+            initializeDefaultData();
+            refreshAll();
+            alert('All saved data has been cleared and dashboard reset to default.');
+        }
+    }
+
+    const tripBody = document.getElementById('tripBody');
+    const tatBody = document.getElementById('tatBody');
+    const tripCanvas = document.getElementById('tripChartCanvas');
+    const tatCanvas = document.getElementById('tatChartCanvas');
+    const exportBtn = document.getElementById('exportPdfBtn');
+    const clearBtn = document.getElementById('clearDataBtn');
+    let tripChart, tatChart;
+
+    loadFromStorage();
+
+    function timeToDecimal(t) {
+        if (!t) return 0;
+        let p = t.split(':').map(v => parseInt(v,10)||0);
+        if (p.length===3) return p[0] + p[1]/60 + p[2]/3600;
+        return 0;
+    }
+
+    function formatTimeLabel(t) {
+        if (!t) return '';
+        let p = t.split(':').map(v => parseInt(v,10)||0);
+        if (p.length===3) return `${p[0]}h ${p[1]}m`;
+        return t;
+    }
+
+    function getTripHeaders() {
+        return {
+            col2: document.querySelector('#tripTable thead th:nth-child(2)')?.innerText.trim()||'TOTAL DISPATCH',
+            col3: document.querySelector('#tripTable thead th:nth-child(3)')?.innerText.trim()||'REACHED AT PLANT',
+            col4: document.querySelector('#tripTable thead th:nth-child(4)')?.innerText.trim()||'TRANSIT'
+        };
+    }
+    function getTatHeaders() {
+        return {
+            col2: document.querySelector('#tatTable thead th:nth-child(2)')?.innerText.trim()||'TRANSIT TAT (HH:MM:SS)',
+            col3: document.querySelector('#tatTable thead th:nth-child(3)')?.innerText.trim()||'ANGUL PARKING → ENTRY GATE',
+            col4: document.querySelector('#tatTable thead th:nth-child(4)')?.innerText.trim()||'PLANT ENTRY → EXIT'
+        };
+    }
+
+    function getTripData() {
+        let rows = tripBody.querySelectorAll('tr');
+        let labels = [], d1=[], d2=[], d3=[];
+        rows.forEach(r=>{
+            let c = r.querySelectorAll('td');
+            if(c.length>=4){
+                labels.push(c[0].innerText.trim());
+                d1.push(parseFloat(c[1].innerText.trim())||0);
+                d2.push(parseFloat(c[2].innerText.trim())||0);
+                d3.push(parseFloat(c[3].innerText.trim())||0);
+            }
+        });
+        return {labels, d1, d2, d3};
+    }
+
+    function getTatData() {
+        let rows = tatBody.querySelectorAll('tr');
+        let labels = [], t1=[], t2=[], t3=[];
+        let t1str=[], t2str=[], t3str=[];
+        rows.forEach(r=>{
+            let c = r.querySelectorAll('td');
+            if(c.length>=4){
+                labels.push(c[0].innerText.trim());
+                t1str.push(c[1].innerText.trim());
+                t2str.push(c[2].innerText.trim());
+                t3str.push(c[3].innerText.trim());
+                t1.push(timeToDecimal(c[1].innerText.trim()));
+                t2.push(timeToDecimal(c[2].innerText.trim()));
+                t3.push(timeToDecimal(c[3].innerText.trim()));
+            }
+        });
+        return {labels, t1, t2, t3, t1str, t2str, t3str};
+    }
+
+    function updateTransit() {
+        tripBody.querySelectorAll('tr').forEach(row=>{
+            let c = row.querySelectorAll('td');
+            if(c.length>=4){
+                let d = parseFloat(c[1].innerText.trim())||0;
+                let r = parseFloat(c[2].innerText.trim())||0;
+                c[3].innerText = d - r;
+            }
+        });
+    }
+
+    function updateTripChart() {
+        let data = getTripData();
+        let type = document.getElementById('tripChartType').value;
+        let h = getTripHeaders();
+        if(tripChart) tripChart.destroy();
+        if(type==='bar'){
+            tripChart = new Chart(tripCanvas, {
+                type:'bar',
+                data:{
+                    labels: data.labels,
+                    datasets:[
+                        {label:h.col2, data:data.d1, backgroundColor:'#5B9BD5'},
+                        {label:h.col3, data:data.d2, backgroundColor:'#ED7D31'},
+                        {label:h.col4, data:data.d3, backgroundColor:'#A5A5A5'}
+                    ]
+                },
+                options:{
+                    responsive:true,
+                    plugins:{
+                        legend: {
+                            labels: {
+                                font: { weight: 'bold', size: 11 }
+                            }
+                        },
+                        datalabels:{ 
+                            color:'#1e3a5f', 
+                            anchor:'end', 
+                            align:'top', 
+                            font: { weight: 'bold', size: 11 },
+                            formatter:v=>v 
+                        }
+                    }
+                }
+            });
+        } else {
+            let total1 = data.d1.reduce((a,b)=>a+b,0);
+            let total2 = data.d2.reduce((a,b)=>a+b,0);
+            let total3 = data.d3.reduce((a,b)=>a+b,0);
+            tripChart = new Chart(tripCanvas, {
+                type:'pie',
+                data:{
+                    labels:[h.col2, h.col3, h.col4],
+                    datasets:[{ data:[total1,total2,total3], backgroundColor:['#5B9BD5','#ED7D31','#A5A5A5'] }]
+                },
+                options:{ 
+                    plugins:{ 
+                        legend: {
+                            labels: {
+                                font: { weight: 'bold', size: 11 }
+                            }
+                        },
+                        datalabels:{ 
+                            color:'white', 
+                            font: { weight: 'bold', size: 12 },
+                            formatter:v=>v 
+                        } 
+                    } 
+                }
+            });
+        }
+    }
+
+    function updateTatChart() {
+        let data = getTatData();
+        let type = document.getElementById('tatChartType').value;
+        let h = getTatHeaders();
+        if(tatChart) tatChart.destroy();
+        if(type==='bar'){
+            tatChart = new Chart(tatCanvas, {
+                type:'bar',
+                data:{
+                    labels: data.labels,
+                    datasets:[
+                        {label:h.col2, data:data.t1, backgroundColor:'#5B9BD5'},
+                        {label:h.col3, data:data.t2, backgroundColor:'#ED7D31'},
+                        {label:h.col4, data:data.t3, backgroundColor:'#A5A5A5'}
+                    ]
+                },
+                options:{
+                    responsive:true,
+                    plugins:{
+                        legend: {
+                            labels: {
+                                font: { weight: 'bold', size: 10 }
+                            }
+                        },
+                        datalabels:{
+                            color:'#1e3a5f', 
+                            anchor:'end', 
+                            align:'top',
+                            font: { weight: 'bold', size: 10 },
+                            formatter:(value, context) => {
+                                let idx = context.dataIndex;
+                                let ds = context.datasetIndex;
+                                if(ds === 0) return data.t1str[idx] ? formatTimeLabel(data.t1str[idx]) : value.toFixed(2)+'h';
+                                if(ds === 1) return data.t2str[idx] ? formatTimeLabel(data.t2str[idx]) : value.toFixed(2)+'h';
+                                if(ds === 2) return data.t3str[idx] ? formatTimeLabel(data.t3str[idx]) : value.toFixed(2)+'h';
+                                return value.toFixed(2)+'h';
+                            }
+                        }
+                    }
+                }
+            });
+        } else {
+            let avg1 = data.t1.reduce((a,b)=>a+b,0)/data.t1.length;
+            let avg2 = data.t2.reduce((a,b)=>a+b,0)/data.t2.length;
+            let avg3 = data.t3.reduce((a,b)=>a+b,0)/data.t3.length;
+            
+            tatChart = new Chart(tatCanvas, {
+                type:'pie',
+                data:{
+                    labels:[h.col2, h.col3, h.col4],
+                    datasets:[{ data:[avg1,avg2,avg3], backgroundColor:['#5B9BD5','#ED7D31','#A5A5A5'] }]
+                },
+                options:{ 
+                    plugins:{ 
+                        legend: {
+                            labels: {
+                                font: { weight: 'bold', size: 11 }
+                            }
+                        },
+                        datalabels:{ 
+                            color:'white', 
+                            font: { weight: 'bold', size: 11 },
+                            formatter:(v) => {
+                                const hours = Math.floor(v);
+                                const minutes = Math.round((v - hours) * 60);
+                                return `${hours}h ${minutes}m`;
+                            }
+                        } 
+                    } 
+                }
+            });
+        }
+    }
+
+    function refreshAll() { 
+        updateTransit(); 
+        updateTripChart(); 
+        updateTatChart(); 
+        saveToStorage();
+    }
+
+    document.getElementById('addTripRowBtn').addEventListener('click', ()=>{
+        let row = document.createElement('tr');
+        row.innerHTML = '<td contenteditable="true">New Date<td contenteditable="true">0<td contenteditable="true">0<td contenteditable="true">0';
+        tripBody.appendChild(row); 
+        refreshAll();
+    });
+    
+    document.getElementById('deleteTripRowBtn').addEventListener('click', ()=>{
+        if(tripBody.children.length>1) tripBody.removeChild(tripBody.lastElementChild); 
+        refreshAll();
+    });
+    
+    document.getElementById('addTatRowBtn').addEventListener('click', ()=>{
+        let row = document.createElement('tr');
+        row.innerHTML = '<td contenteditable="true">New Date<td contenteditable="true">00:00:00<td contenteditable="true">00:00:00<td contenteditable="true">00:00:00';
+        tatBody.appendChild(row); 
+        refreshAll();
+    });
+    
+    document.getElementById('deleteTatRowBtn').addEventListener('click', ()=>{
+        if(tatBody.children.length>1) tatBody.removeChild(tatBody.lastElementChild); 
+        refreshAll();
+    });
+
+    tripBody.addEventListener('input', (e) => {
+        const cell = e.target;
+        if (cell.tagName === 'TD') {
+            const row = cell.parentNode;
+            const cells = row.querySelectorAll('td');
+            if (cells.length >= 4) {
+                const index = Array.from(cells).indexOf(cell);
+                if (index === 1 || index === 2) {
+                    const d = parseFloat(cells[1].innerText.trim()) || 0;
+                    const r = parseFloat(cells[2].innerText.trim()) || 0;
+                    cells[3].innerText = d - r;
+                }
+            }
+        }
+        refreshAll();
+    });
+    
+    tatBody.addEventListener('input', refreshAll);
+    
+    document.querySelectorAll('th[contenteditable], .chart-footer, .chart-header h3').forEach(el=>{
+        el.addEventListener('input', refreshAll);
+    });
+    
+    document.getElementById('tripChartType').addEventListener('change', refreshAll);
+    document.getElementById('tatChartType').addEventListener('change', refreshAll);
+    
+    // Clear button event listener
+    clearBtn.addEventListener('click', clearSavedData);
+
+    // ===== HIGH CLARITY PDF EXPORT =====
+    exportBtn.addEventListener('click', async function() {
+        try {
+            exportBtn.textContent = 'Generating High-Quality PDF...'; 
+            exportBtn.disabled = true;
+            clearBtn.disabled = true;
+            
+            const original = document.getElementById('dashboardScreen');
+            const clone = original.cloneNode(true);
+            clone.querySelectorAll('.btn-group, .chart-select, .btn').forEach(el=>el.remove());
+            clone.classList.add('pdf-clone');
+            document.body.appendChild(clone);
+
+            const cloneTrip = clone.querySelector('#tripChartCanvas');
+            const cloneTat = clone.querySelector('#tatChartCanvas');
+            const tripType = document.getElementById('tripChartType').value;
+            const tatType = document.getElementById('tatChartType').value;
+            const tripHeaders = getTripHeaders();
+            const tatHeaders = getTatHeaders();
+            const tripData = getTripData();
+            const tatData = getTatData();
+
+            const createFixed = (canvas, type, isTrip) => {
+                if(!canvas) return;
+                canvas.width = 550; canvas.height = 330;
+                canvas.style.width = '550px'; canvas.style.height = '330px';
+                if(isTrip){
+                    if(type==='bar'){
+                        new Chart(canvas, {
+                            type:'bar',
+                            data:{
+                                labels: tripData.labels,
+                                datasets:[
+                                    {label:tripHeaders.col2, data:tripData.d1, backgroundColor:'#5B9BD5'},
+                                    {label:tripHeaders.col3, data:tripData.d2, backgroundColor:'#ED7D31'},
+                                    {label:tripHeaders.col4, data:tripData.d3, backgroundColor:'#A5A5A5'}
+                                ]
+                            },
+                            options:{ 
+                                responsive:false, 
+                                maintainAspectRatio:false, 
+                                animation:false,
+                                plugins: {
+                                    legend: { labels: { font: { weight: 'bold' } } }
+                                }
+                            }
+                        });
+                    } else {
+                        let t1=tripData.d1.reduce((a,b)=>a+b,0), t2=tripData.d2.reduce((a,b)=>a+b,0), t3=tripData.d3.reduce((a,b)=>a+b,0);
+                        new Chart(canvas, {
+                            type:'pie',
+                            data:{ labels:[tripHeaders.col2, tripHeaders.col3, tripHeaders.col4], datasets:[{ data:[t1,t2,t3], backgroundColor:['#5B9BD5','#ED7D31','#A5A5A5'] }] },
+                            options:{ 
+                                responsive:false, 
+                                maintainAspectRatio:false, 
+                                animation:false,
+                                plugins: {
+                                    legend: { labels: { font: { weight: 'bold' } } }
+                                }
+                            }
+                        });
+                    }
+                } else {
+                    if(type==='bar'){
+                        new Chart(canvas, {
+                            type:'bar',
+                            data:{
+                                labels: tatData.labels,
+                                datasets:[
+                                    {label:tatHeaders.col2, data:tatData.t1, backgroundColor:'#5B9BD5'},
+                                    {label:tatHeaders.col3, data:tatData.t2, backgroundColor:'#ED7D31'},
+                                    {label:tatHeaders.col4, data:tatData.t3, backgroundColor:'#A5A5A5'}
+                                ]
+                            },
+                            options:{
+                                responsive:false, maintainAspectRatio:false, animation:false,
+                                plugins:{ 
+                                    legend: { labels: { font: { weight: 'bold' } } },
+                                    datalabels:{ 
+                                        font: { weight: 'bold' },
+                                        formatter:(v,ctx)=>{
+                                            let idx=ctx.dataIndex, ds=ctx.datasetIndex;
+                                            if(ds===0) return tatData.t1str[idx] ? formatTimeLabel(tatData.t1str[idx]) : v.toFixed(2)+'h';
+                                            if(ds===1) return tatData.t2str[idx] ? formatTimeLabel(tatData.t2str[idx]) : v.toFixed(2)+'h';
+                                            if(ds===2) return tatData.t3str[idx] ? formatTimeLabel(tatData.t3str[idx]) : v.toFixed(2)+'h';
+                                            return v.toFixed(2)+'h';
+                                        } 
+                                    } 
+                                }
+                            }
+                        });
+                    } else {
+                        let a1 = tatData.t1.reduce((a,b)=>a+b,0)/tatData.t1.length;
+                        let a2 = tatData.t2.reduce((a,b)=>a+b,0)/tatData.t2.length;
+                        let a3 = tatData.t3.reduce((a,b)=>a+b,0)/tatData.t3.length;
+                        new Chart(canvas, {
+                            type:'pie',
+                            data:{ labels:[tatHeaders.col2, tatHeaders.col3, tatHeaders.col4], datasets:[{ data:[a1,a2,a3], backgroundColor:['#5B9BD5','#ED7D31','#A5A5A5'] }] },
+                            options:{ 
+                                responsive:false, 
+                                maintainAspectRatio:false, 
+                                animation:false, 
+                                plugins:{ 
+                                    legend: { labels: { font: { weight: 'bold' } } },
+                                    datalabels:{ 
+                                        font: { weight: 'bold' },
+                                        formatter:(v) => {
+                                            const hours = Math.floor(v);
+                                            const minutes = Math.round((v - hours) * 60);
+                                            return `${hours}h ${minutes}m`;
+                                        }
+                                    } 
+                                } 
+                            }
+                        });
+                    }
+                }
+            };
+
+            createFixed(cloneTrip, tripType, true);
+            createFixed(cloneTat, tatType, false);
+            
+            await new Promise(r=>setTimeout(r,1500));
+
+            const canvas = await html2canvas(clone, { 
+                scale: 3.0,
+                backgroundColor: '#ffffff', 
+                useCORS: true, 
+                windowWidth: 1200,
+                logging: false
+            });
+            
+            const { jsPDF } = window.jspdf;
+            const pdf = new jsPDF({ orientation:'landscape', unit:'mm', format:'a4' });
+            const imgData = canvas.toDataURL('image/jpeg', 0.95);
+            const pw = pdf.internal.pageSize.getWidth();
+            const ph = pdf.internal.pageSize.getHeight();
+            const iw = canvas.width;
+            const ih = canvas.height;
+            const ratio = Math.min(pw/iw, ph/ih);
+            
+            pdf.addImage(imgData, 'JPEG', (pw-iw*ratio)/2, (ph-ih*ratio)/2, iw*ratio, ih*ratio);
+            pdf.save('Tat_Report.pdf');
+            
+            clone.remove();
+            exportBtn.textContent = '📥 Download PDF';
+            exportBtn.disabled = false;
+            clearBtn.disabled = false;
+            
+        } catch(e) {
+            console.error(e); 
+            alert('PDF generation failed. Please try again.');
+            document.querySelector('.pdf-clone')?.remove();
+            exportBtn.textContent = '📥 Download PDF';
+            exportBtn.disabled = false;
+            clearBtn.disabled = false;
+        }
+    });
+
+    refreshAll();
+})();
+</script>
+</body>
+</html>
